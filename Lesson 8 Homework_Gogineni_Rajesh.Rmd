@@ -1,0 +1,315 @@
+---
+title: "Homework 8--DS 700"
+author: "Abra Brisbin"
+date: "12/21/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Load necessary packages here. Use DMwR2 instead of DMwR.
+```{r}
+
+library(ggformula)
+library(MASS)
+library(gapminder)
+library(dplyr)
+library(tidyverse)
+library(gapminder)
+library(lubridate)
+library(DMwR2)
+library(imputeMissings)
+library(mlbench)
+
+```
+
+## Problem 1:  Relationship between skin fold thickness and diabetes risk
+### 1a.
+Load the MASS package, which contains Pima.tr2, a data set about women of Pima Indian heritage.  
+
+- Hint:  Both `MASS` and `dplyr` include functions called `select.`  We'll be using dplyr's `select` function in this assignment.  You have two options:  (1) load MASS first, so it doesn't mask dplyr; or (2) when you need the `select` function, refer to it as `dplyr::select` so R knows which version of the function you want.
+
+How many rows and columns are in this data set?
+```{r}
+dim(Pima.tr2)
+
+```
+
+### 1b.
+Count the number of missing values in each column of the data.
+```{r}
+
+head(Pima.tr2)
+tail(Pima.tr2)
+data(Pima.tr2)
+names(Pima.tr2) = c("npreg","glu","bp","skin","bmi","ped","age","type")
+
+Pima.tr2 %>%
+  select(everything()) %>%
+  summarise_all(list(~sum(is.na(.))))
+
+```
+Count the number of missing values in each row of the data.  Make a histogram of the results.
+
+
+
+```{r}
+
+NAs_by_row <-
+  Pima.tr2 %>%
+  is.na() %>%
+  rowSums()
+  
+gf_histogram(~NAs_by_row)
+
+```
+
+### 1c.  
+Let's investigate whether the missingness in the `skin` variable (skin fold thickness) is informative about `type` (whether the person has diabetes).
+
+Brainstorm a reason why "whether the `skin` variable is missing or not" *might* be informative.
+
+Make a new  data set, `Pima3`.  `Pima3` should contain all of the variables from `Pima.tr2`, plus a variable `is_missing` that equals TRUE if `skin` is missing, and equals FALSE otherwise.
+```{r}
+Pima3 <-
+  Pima.tr2 %>%
+  mutate(is_missing = case_when(
+    skin > 0 ~ "FALSE",
+    TRUE ~ "TRUE"
+  ))
+
+head(Pima3)
+
+```
+
+Use ggformula to make a graph of the relationship between `type` and `is_missing`.
+```{r}
+
+gf_bar(~ type, fill =~ is_missing, position = position_dodge(), data = Pima3)
+
+
+```
+Based on the graph, do you believe that `is_missing` is informative about `type`?
+Yes
+
+Another way we can investigate whether `is_missing` is informative is to use a Chi-Squared Test of Independence to test whether there is statistical evidence of an association between the two variables.  (You'll learn more about this in DS 705.)  Run the following code cell without changes:
+```{r}
+chisq.test(x = Pima3$is_missing, y = Pima3$type)
+```
+A p-value greater than 0.10 means that there is not much evidence of an association between the two variables; it is plausible that they are independent.  What is the p-value of this test?
+
+### 1d.
+Let's return to working with `Pima.tr2`.  Conduct a logistic regression to model whether a person will have diabetes based on their skin fold thickness and their family risk factor, `ped`.
+```{r}
+
+fit = glm(type ~ skin + ped, data = Pima.tr2, family = "binomial")
+fit
+
+tail(Pima.tr2)
+
+```
+
+What is the model for the log odds (logit)?  Is skin fold thickness positively or negatively associated with log odds of diabetes?
+
+Display the last 6 rows of the data set.  Among these individuals, how many have NA values for `skin`?
+```{r}
+
+```
+
+## 1e.
+Create a new data frame using median imputation to fill in the missing values in Pima.tr2.  Display the last 6 rows of the data.
+```{r}
+Pimamedian = impute(Pima.tr2, method = "median/mode")
+head(Pimamedian)
+tail(Pimamedian)
+
+```
+Note that `skin` (skin fold thickness) and `bmi` (body mass index) are both related to a person's weight.  What is the BMI of the person in row 297?  What is this person's imputed skin fold thickness?
+
+What is the BMI of the person in row 298?  What is this person's imputed skin fold thickness?
+
+Compare the BMIs and imputed skin fold thicknesses of the people in rows 297 and 298.  Why did this happen?  In this case, was median imputation successful in filling in missing data with plausible values?
+
+### 1f.
+Create a new data frame using KNN imputation to fill in the missing values in Pima.tr2.  Display the last 6 rows of the data.
+```{r}
+Pimaknn = knnImputation(Pima.tr2)
+head(Pimaknn)
+tail(Pimaknn)
+
+```
+Compare the BMIs and imputed skin fold thicknesses of the people in rows 297 and 298.  For this data set, do you prefer median imputation or KNN imputation?
+
+### 1f.
+Perform logistic regression again to model whether a person will have diabetes based on their skin fold thickness and their family risk factor, `ped`.  This time, use the data imputed with KNN imputation.
+```{r}
+
+fit = glm(type ~ skin + ped, data = Pimaknn, family = "binomial")
+fit
+
+```
+What is the model for the log odds (logit)?  How much did it change, compared to the model in 1d?
+
+## Problem 2:  Relationship between obesity and diabetes risk
+### 2a.
+In problem 2, continue working with the KNN-imputed data set.  Use `dplyr` to create a new variable, `bmi_cat`, according to the following rules:
+
+- If $bmi < 18.5$, then bmi_cat = "underweight".
+- If $18.5 \leq bmi < 25$, then bmi_cat = "normal weight".
+- If $25 \leq bmi < 30$, then bmi_cat = "overweight".
+- If $bmi \geq 30$, then bmi_cat = "obese".
+
+```{r}
+
+Pimaknnclass <-
+  Pimaknn %>%
+  mutate(bmi_cat = case_when(
+    bmi < 18.5 ~ "underweight",
+    (bmi >= 18.5 & bmi < 25) ~ "normal weight",
+    (bmi >= 25 & bmi < 30.5) ~ "overweight",
+    bmi >= 30.5 ~ "obese"
+  ))
+
+head(Pimaknnclass)
+tail(Pimaknnclass)
+
+```
+
+Make a bar plot of the new variable.  What about this graph could make it difficult to make relevant comparisons?
+```{r}
+
+gf_bar(~ type, fill =~ bmi_cat, position = position_dodge(), data = Pimaknnclass)
+
+```
+
+### 2b.
+Use the functions `mutate` and `factor`, with the argument `levels`, to put the categories of `bmi_cat` in order from underweight to obese.
+```{r}
+
+
+
+```
+
+Make a bar graph of bmi_cat, with bars filled with different colors based on whether people have diabetes or not.
+```{r}
+
+```
+
+Your coworker looks at your graph and says, "Based on this data set, obese people are the most likely to have diabetes.  But they're also the most likely to not have diabetes."  What's wrong with your coworker's statement?
+
+## 2c.
+One tool for comparing probabilities (or risks) in different groups is a conditional probability bar graph, in which the heights of the bars in each group add up to 1 (or 100%).  To make a conditional probability bar graph, start by using `dplyr` to create a new data frame with 4 rows:  The number of people in each group of `bmi_cat`.  (These values will be the denominators in the new graph.)
+
+- Give the column of counts an informative name.
+```{r}
+
+```
+How many people in the data set are normal weight?  How many are overweight?
+
+
+Now create a new data frame telling the number of people in each combination of `bmi_cat` and `type`.  (These values will be the numerators in the new graph.)
+
+- Give the column of counts an informative name.
+```{r}
+
+```
+How many people in the data set are normal weight and have diabetes?  How many are overweight and have diabetes?
+
+```{r}
+# cntnormweight <-
+#   Pimaknnclass %>%
+#   filter(bmi_cat == "normal weight")
+# 
+# dim(cntnormweight)
+# 
+# cntnormweightdiab <-
+#   Pimaknnclass %>%
+#   filter(bmi_cat == "normal weight" & type == "Yes")
+# 
+# dim(cntnormweightdiab)
+
+cntoverweight <-
+  Pimaknnclass %>%
+  filter(bmi_cat == "overweight")
+
+dim(cntoverweight)
+cntoverweight
+
+cntoverweightdiab <-
+  Pimaknnclass %>%
+  filter(bmi_cat == "overweight" & type == "Yes")
+
+dim(cntoverweightdiab)
+cntoverweightdiab
+
+```
+
+
+
+### 2d.
+Join the two data frames you created in part 2c.  The resulting data frame should have 7 rows and 4 columns.
+```{r}
+
+```
+Create a new column equal to the numerators divided by the denominators.  This gives the conditional probability that a person in this data set has diabetes, conditional on their value of `bmi_cat`.
+```{r}
+
+```
+In this data set, what proportion of normal weight people have diabetes?  What proportion of overweight people have diabetes?
+
+### 2e.
+Use the function `gf_col` to make a graph where 
+
+- the heights of the bars are determined by the proportions you computed in part 2d; 
+- the x-axis positions of the bars are determined by the group variable, bmi_cat (so that the heights of bars within each group sum to 1); and
+- the color filling each bar is determined by `type`.
+```{r}
+
+```
+
+How does this graph make it more clear that obese people are the most likely to have diabetes?  What information is not visible in this graph that was visible in the graph of raw counts in part 2b?
+
+
+## Problem 3:  Bland-Altman plot
+In this problem, you will use `dplyr`, `ggformula`, and `tidyr` to make a Bland-Altman plot, also known as a Tukey mean-difference plot.
+
+### 3a.
+Load the `gapminder` package.  We'll be working with the `gapminder` data set.
+
+Take a subset of the data consisting of the columns continent, country, year, and pop (population), with data from the years 2002 and 2007.  For practice, try to do this as simply as possible, but without using the symbol `==`.
+```{r}
+
+```  
+
+Use a `pivot_` function to rearrange the data so that each row represents 1 country, and the population in 2002 and the population in 2007 are two separate variables.
+```{r}
+
+```
+
+### 3b.
+Create new columns equal to 
+
+- the mean population in 2002 and 2007, and
+- the difference in population (in 2007 minus 2002)
+
+Display the first few rows of data.
+```{r}
+
+```
+
+What is the mean population in Afghanistan?  What is the difference in population in Albania?
+
+# 3c. 
+Make scatterplot with the difference in population on the y-axis and the mean population on the x-axis.  
+
+- Color the points by continent.
+- Use log10 scales for both axes.
+- Include a line of best fit (not 5 separate lines of best fit).
+```{r}
+
+```
+
+Among the countries for which we have data, which continent had the highest proportion of countries with a lower-than expected growth rate, based on their average population?

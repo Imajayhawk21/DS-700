@@ -1,0 +1,214 @@
+---
+title: "Lesson 7 Homework--DS 700"
+author: "Abra Brisbin"
+date: "12/18/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Load necessary libraries here.
+```{r}
+
+library(ggformula)
+library(dplyr)
+library(tidyverse)
+library(gapminder)
+
+```
+This assignment will help you practice using dplyr and ggformula to make some more complex types of graphs, and dig deeper into what a data set can tell us.
+
+## Problem 1:  Relationship between life expectancy and GDP
+### 1a.
+Install and load the `gapminder` package.  We'll analyze the `gapminder` data set, which contains data on different countries in many different years.
+
+Extract the data from the year 2007.  Make a scatterplot of lifeExp (life expectancy) as a function of gdpPercap (per capita GDP), for this subset of data.  (Hint:  You can pipe the subsetted data directly into the graph function.)
+```{r}
+
+country_df = gapminder
+plot_df <- 
+  country_df %>%
+  filter(year == 2007)
+
+gf_point(lifeExp ~ gdpPercap, data = plot_df) %>% 
+  gf_lm() %>% 
+  gf_labs(title = "How GDP of a country impacts Life Expectancy",
+          x = "GDP per Capita",
+          y = "Life Expectancy")
+
+```
+
+### 1b.
+`gdpPercap` is right-skewed, so it may be helpful to use a log scale.  Pipe the results of your graph into `gf_refine(scale_x_log10())` to change the x-axis to a log scale.  
+
+Use a log scale for gdpPercap throughout the rest of this assignment.
+```{r}
+
+plot_df <- plot_df %>%
+  mutate(loggdpPercap=log(gdpPercap))
+
+gf_point(lifeExp ~ loggdpPercap, data = plot_df) %>% 
+  gf_lm() %>% 
+  gf_labs(title = "How GDP of a country impacts Life Expectancy",
+          x = "GDP per Capita",
+          y = "Life Expectancy")
+
+```
+
+### 1c.
+Modify your graph from 1b to use different colors for different continents.
+```{r}
+head(plot_df)
+
+gf_point(lifeExp ~ loggdpPercap, col =~ continent, data = plot_df) %>%
+  gf_lm() %>%
+  gf_labs(title = "How GDP of a country impacts Life Expectancy",
+          x = "GDP per Capita",
+          y = "Life Expectancy")
+
+```
+
+### 1d.
+Try adding a smoothing curve to the data for each continent.  What happens?  Why does this happen?
+```{r}
+
+gf_point(lifeExp ~ loggdpPercap, col =~ continent, data = plot_df) %>%
+  gf_smooth() %>%
+  gf_labs(title = "How GDP of a country impacts Life Expectancy",
+          x = "GDP per Capita",
+          y = "Life Expectancy")
+
+
+```
+
+### 1e.
+One possible solution is to add a smoothing line, which is easier to compute than a loess curve.  Add a smoothing line to the data for each continent.
+```{r}
+
+gf_point(lifeExp ~ loggdpPercap, col =~ continent, data = plot_df) %>%
+  gf_smooth(lifeExp ~ loggdpPercap, method = "line", col = "blue", data = plot_df) %>%
+  gf_labs(title = "How GDP of a country impacts Life Expectancy",
+          x = "GDP per Capita",
+          y = "Life Expectancy")
+
+
+```
+
+### 1f.
+An alternative solution is to use loess smoothing curves, but to focus on the continents with more data in 2007.  Extract the data from the year 2007 *and* from the four continents with the most data.  (The logical operators `&` (and) and `!=` (not equal to) may be helpful.)  Make a scatterplot of lifeExp versus gdpPercap, with smoothing curves for each continent.
+```{r}
+
+plottwo_df <- 
+  country_df %>%
+  filter(year == 2007 & continent != "Oceania")
+
+head(plottwo_df)
+
+gf_point(lifeExp ~ gdpPercap, data = plottwo_df) %>%
+  gf_lm() %>%
+  gf_labs(title = "How GDP of a country impacts Life Expectancy",
+          x = "GDP per Capita",
+          y = "Life Expectancy")
+
+```
+
+Add a title to your graph summarizing the key takeaway from the graph.  Add a caption stating the source of the data.
+```{r}
+
+```
+
+## Problem 2:  Colors and labels
+### 2a. 
+Let's return to our graph from part 1c (without smoothing lines or curves).  We'd like to make our graph readable by people who are color-blind.  Visit https://colorbrewer2.org/ and select a color palette for 5 data classes that is "colorblind safe".  Then use the `scale_color_brewer()` function inside `gf_refine` to use the color palette you chose.  Experiment and find the palette you like the best!
+
+Also map the shape of the points to the continent, to make the graph unambiguous for people who have printed your report in black and white.
+```{r}
+
+```
+
+### 2b.
+Use the function `coord_cartesian` (also inside `gf_refine`) to zoom in on the region of the graph with $10000 \leq GDP \leq 50000$ and $70 \leq lifeExp \leq 85$.
+```{r}
+
+gf_point(lifeExp ~ gdpPercap, col =~ continent, data = plot_df) %>%
+  gf_smooth() + coord_cartesian(xlim = c(10000, 50000), ylim = c(70, 85)) 
+
+summarycontinents <-
+plot_df %>%
+  filter(between(gdpPercap, 10000, 50000)  & between(lifeExp,70,85)) %>%
+  group_by(continent) %>%
+  summarise(numObs = n_distinct(country), LifeExpectancyMean = mean(lifeExp), GDPPerCapitaMean = mean(gdpPercap), PopulatioMedian = median(pop))
+                
+summarycontinents
+
+```
+
+### 2c.
+Use `dplyr` to compute the mean life expectancy and mean GDP per capita of each continent in 2007.  Store your results in a data frame.
+```{r}
+
+plot_df <- 
+  country_df %>%
+  filter(year == 2007)
+
+summarycontinents <-
+plot_df %>%
+  group_by(continent) %>%
+  summarise(numObs = n_distinct(country), LifeExpectancyMean = mean(lifeExp), GDPPerCapitaMean = mean(gdpPercap), PopulatioMedian = median(pop))
+                
+
+summarycontinents
+
+```
+
+What was the mean life expectancy of African countries in 2007?  What was the mean GDP in Asian countries in 2007?
+
+### 2d.
+Use the data frame from part 2c, along with the function `gf_label`, to add continent labels to your graph from part 2a.  Make the labels partly transparent, so you can still see the data points underneath them.
+
+- I recommend making the labels black, rather than using the ColorBrewer palette you used for the points, because the ligher colors can be hard to read.
+```{r}
+
+```
+
+### 2e.
+Return to the default color scheme.  Add the argument `fill =~ continent` to the labels to give the labels a background color that matches the points of the scatterplot.  Use the argument `show.legend = FALSE` in both the scatterplot and the labels to plot the graph without a legend.
+```{r}
+
+```
+## Problem 3:  Population by continent
+### 3a.
+Extract the data from the year 2007 *and* from the four continents with the most data.  Make boxplots of the population of countries in each continent.  Use a log scale for population. 
+```{r}
+
+```
+
+### 3b.
+Use `dplyr` to compute the median population of countries in each continent in 2007.  Store your results in a data frame.
+```{r}
+
+```
+Put the data frame in order by (increasing) median population.  Which continent is first in order?  Which continent is last?
+```{r}
+
+```
+
+### 3c.
+Re-do your graph from part 3a, but this time, put the boxplots in order of increasing median.
+```{r}
+
+```
+
+### 3d.
+Working with your graph from part 3c, increase the font size of the axis labels and titles.  You can do this using
+`gf_theme(axis.text = element_text(...), axis.title = element_text(...))`
+
+Read the documentation for the `element_text` function to determine the appropriate argument.
+```{r}
+
+```
+
+

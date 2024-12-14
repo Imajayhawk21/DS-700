@@ -1,0 +1,265 @@
+---
+title: "DS 700 Lesson 10 Homework"
+author: "Abra Brisbin"
+date: "11/22/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+If your code uses any packages, load them here.
+```{r}
+library(ggformula)
+library(dplyr)
+library(readr)
+library(na.tools)
+library(tidyverse)
+library(mosaicData)
+library(readr)
+```
+
+## Problem 1:  Airport statistics
+
+###1a. Download the data set `airport.csv`.  Read it into R and display the first few lines of data.
+
+```{r}
+
+air <- read_csv("~//Documents/R/airport.csv")
+
+head(air)
+
+```
+
+This data set contains data on all 135 medium and large airports in the US in 1990.  
+
+(Dataset:  "US Airport Statistics," submitted by Larry Winner, University of Florida.   Dataset obtained from the Journal of Statistics Education (http://www.amstat.org/publications/jse). Accessed 3 June 2015. Used by permission of author.) 
+
+###1b. **Use dplyr** to print a list of airports at which the number of scheduled departures was greater than the number of departures performed.
+```{r}
+aircomp <- air %>%
+  filter(`Scheduled Departures` > `Performed Departures`)
+
+print (aircomp, n = nrow (aircomp)) 
+```
+
+
+
+###1c. **Use control flow** to print a list of airports at which the number of scheduled departures was greater than the number of departures performed.
+
+- Your answer should be the same as in part b.
+- The point of this problem is to practice using control flow in a situation where you can check your answer using another method.
+```{r}
+# Loop through 135 rows of data and print the airport if scheduled departure > performed departures
+
+airloop <- ifelse(test=(air$`Scheduled Departures` > air$`Performed Departures`),yes='YES',no='NO')
+
+airinefficient <- cbind(air, airloop) %>%
+  filter(airloop == 'YES')
+
+```
+
+
+
+###1d. **Use dplyr** to find the average (mean) number of passengers on flights from all the airports in part b.
+
+- Your result should be 1 number:  The total number of passengers from all of the specified airports, divided by the total number of performed departures from all of the specified airports.
+
+```{r}
+
+Passengersum = sum(aircomp$Passengers, na.rm = TRUE)  
+PerformedDeparturesum = sum(aircomp$`Performed Departures`, na.rm = TRUE)  
+
+PassengerMean = Passengersum/PerformedDeparturesum
+PassengerMean
+
+```
+
+###1e.  **Use control flow** to find the average (mean) number of passengers on flights from all the airports in part c.
+
+- Your answer should be the same as in part d.
+- The point of this problem is to practice using control flow in a situation where you can check your answer using another method.
+
+```{r}
+
+```
+
+
+## 2. Debugging a function
+
+In this problem, we will debug a function to compute the mean of each column of a matrix.  Please note that `sum` and `mean` are not allowed in any part of this problem.
+
+###2a. We'll start by creating a *test suite*, a set of inputs where we know what the function should return, if it's working correctly.
+
+Use the following code to create matrices to help you test the function.
+```{r}
+test1 = matrix(1:9, nr = 3, nc = 3)
+test2 = matrix( c(3, 6, 1, 2), nr = 4, nc = 1 )
+test3 = matrix(c(-1, 0, 1), nr = 1, nc = 3 )
+```
+
+View the contents of `test1`, `test2`, and `test3`.
+```{r}
+test1
+test2
+test3
+```
+
+**Write** 3 sentences describing what our function should return when it is applied to each of the matrices in the test suite, if the function is working correctly.  What **specific** numeric values should the function return???
+
+###2b. Evaluate the following cell to store the function `matrixMeans` in memory.
+```{r}
+matrixMeans <- function(x){
+  # Computes the mean of each column of a matrix x.
+  total = 0
+  count = 0
+  
+  for(ii in 1:ncol(x)){
+    for(jj in 1:nrow(x))
+      total = total + x[ii, jj]
+      count = count + 1
+  }
+  return(total/count)
+}
+```
+
+
+
+###2c. Run the function `matrixMeans` 3 times, with each of `test1`, `test2`, and `test3` as its argument.
+```{r}
+
+foo <- matrixMeans(test1)
+
+foo
+
+```
+
+```{r}
+
+matrixMeansrows <- function(x){
+  # Computes the mean of each column of a matrix x.
+  total = 0
+  count = 0
+  
+  # 1 column
+  # for(ii in 1:ncol(x)){
+    
+    # 4 rows
+    for(jj in 1:nrow(x))
+      total = total + x[jj, ]
+      count = count + 1
+  # }
+  return(total/count)
+}
+  
+foo2 <- matrixMeansrows(test2)
+
+foo2
+
+```
+
+```{r}
+
+matrixMeanscol <- function(x){
+  # Computes the mean of each column of a matrix x.
+  total = 0
+  count = 0
+  # 3 columns
+  for(ii in 1:ncol(x))
+    # {
+    
+    #1 row
+    # for(jj in 1:nrow(x))
+      total = total + x[, ii]
+      count = count + 1
+  # }
+  return(total/count)
+}
+  
+foo3 <- matrixMeanscol(test3)
+
+foo3
+
+```
+
+###2d. The results on the test suite demonstrate that the function `matrixMeans` is not working correctly.  Let's begin by investigating the source of the error you got when analyzing `test2` and `test3`.
+
+####2d i. Based on what the error message says, do you have any initial thoughts about where the problem is or what sort of problem it is?  **Write your ideas here.**
+
+- At this stage of the debugging process, it's fine if your answer is, "I have no clue!"  But by reading the text of the error carefully, you can often make an educated guess.
+- By paying attention to error messages--and what you fixed to make them go away--you will gradually build your problem-solving skills in R and Python, making debugging faster and easier in the future.
+
+####2d ii.  Open a web browser to a search engine.  Type `R` and then copy the text of the error message.
+
+- Sometimes it's helpful to copy the whole error message; other times it works better to copy just the portion after the `:`.
+
+Read at least 2 of the webpages that come up in the search results.  **Paste their URLs here.**
+
+Based on what you read, **what ideas do you have** about what sort of problem this error message represents?
+
+- If you have a specific idea about something to try fixing, proceed to part 1d iv.
+- If you're unsure, do part iii first.
+
+####2d iii. Based on the lines
+`  for(ii in 1:ncol(x)){`
+`    for(jj in 1:nrow(x))`
+what does `ii` represent?  
+
+What does `jj` represent? 
+
+Insert the line
+`print(paste("ii =", ii))`
+immediately after `for(ii in 1:ncol(x)){`.  Evaluate the code cell containing the function again, and run the function with `test3` as input.  What value of `ii` immediately precedes the error message?
+
+Look at the line 
+`total = total + x[ii, jj]`.
+How is the variable `ii` being used?  Does this match what `ii` represents in the `for` loop?
+
+####2d iv. Change the code of the function to correct the issue that the error message is telling you about.  Evaluate the code cell and run the function with `test3` as input.  When you have successfully eliminated the error message, **explain** what change you made.
+
+- Note:  Because our goal is to take the mean of each column, the `for` loop that iterates over the columns should be outside the `for` loop that iterates over the rows.
+
+```{r}
+matrixMeans(test3)
+```
+
+###2e. Run the updated function on `test2`.  
+```{r}
+```
+**What problem** do you see with the output?
+
+Insert print statements into the code to keep track of the values of `total` and `count`.  Use the results to help you identify how to change the code.  Edit the code.  Then evaluate the code and run it on `test2` to verify that your correction worked.
+
+
+```{r}
+```
+
+**Explain** what you changed and why.
+
+###2f.  Run the function on `test1` and `test3`.  When you have your final form of your function, take the any printing statements out.
+```{r}
+```
+
+**What type** of object does `matrixMeans` return?  A number, a vector, a data frame, something else, ...?
+
+What type of object **should** `matrixMeans` return for the inputs `test1` and `test3`?
+
+Modify the code so that `matrixMeans` returns a vector with the same length as the number of columns of its input.
+- The code `toReturn = numeric( ncol(x) )` creates an empty vector with length equal to the number of columns of `x`.
+- Use square bracket notation to set particular elements of `toReturn` equal to the desired output.
+
+Run the function on `test1` and `test3` again to verify that the function now returns the a vector of the correct length.
+
+
+```{r}
+```
+
+###2g. **Which elements** of the returned vectors are correct?
+
+Depending on what changes you made in part d, you may need to make additional changes to the function to ensure that all elements of the returned vectors are correct.  If so, focus on the results of the print statements that report the values of `total` and `count` to help you identify what changes to make.  Run the function.  
+
+```{r}
+```
+
+When you have verified that the function is working correctly, **explain** what you changed and why.

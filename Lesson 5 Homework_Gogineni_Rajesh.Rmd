@@ -1,0 +1,205 @@
+---
+title: "Homework 5--DS 700"
+author: "Abra Brisbin"
+date: "12/17/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem 1:  R as a scientific calculator
+### 1a.
+Use the `c` function to make a vector containing the numbers -1, 0, 2, 5, 17.  Store your vector in the variable x.
+```{r}
+x <- c(-1,0,2,5,17)
+```
+
+Use square brackets [ ] to tell R to display the 3rd element of x.
+```{r}
+x[3]
+```
+Display the 6th element of x.  What happens?
+```{r}
+x[6]
+```
+
+Try running the following code.
+```{r}
+x[-1]
+x[-2]
+x[-3]
+```
+What does the negative sign inside square brackets do?
+<!-- It seems to remove the specific element at that point in the vector. -1 removes the first element of a vector, -2 the second element of a vector, etc... -->
+### 1b.
+*Without using `c`*, make a vector of numbers from -3 to 13, in increments of 4.  Store your vector in the variable y, and display the contents of y.
+
+```{r}
+y <- seq(-3,13, by=4)
+```
+
+Add 5 to each element of y and store the results in the variable z.  Display your results.  
+```{r}
+z=y+5
+```
+
+Take the square root of each element of y.  (Hint:  You can Google "square root r" to find the function to take the square root.)
+```{r}
+sqrt(y)
+```
+Add each element of x to the corresponding element of y.  Store your results back in the variable y.  (This will overwrite the old contents of y.)  Display your results.
+```{r}
+y=x+y
+```
+
+### 1c.
+
+Run the following code to create a vector in a new way:
+```{r}
+my_subset = 2:4
+my_subset
+```
+
+What does the `:` do?  What are two other ways we could create the same vector?
+
+Use square brackets to extract elements 2, 3, and 4 of `x`.  Your code in the next code cell should not include any numbers.
+```{r}
+x[2:4]
+```
+Use square brackets to extract elements 1 and 5 of `x`.   Your code in the next code cell should not include any numbers.
+```{r}
+x[c(1,5)]
+```
+
+
+## Problem 2:  Analyzing a data set
+This problem will guide you through reading a data set into R and understanding it.
+
+### 2a.
+Install the following packages, if you do not already have them installed:
+
+- ggformula
+- dplyr
+- readr
+
+Remember to do this in the console (lower-left panel of RStudio) or the Packages tab (in the lower-right panel), not in your .Rmd document.  Trying to install packages from the .Rmd document can result in an error about "trying to use CRAN without a mirror".
+
+After installing the packages, use the `library` function to load them in the code cell below.  (Normally, I like to load all my packages at the start of an .Rmd file.  That way, if I need to run the .Rmd file on a new computer, it's easy to see what I need to install.)
+
+```{r}
+library(ggformula)
+library(dplyr)
+library(readr)
+```
+
+Which objects are masked by objects in `dplyr`?  Should we be concerned about these?
+<!-- intersect, setdiff, setequal, union -->
+<!-- filter, lag -->
+
+### 2b.
+Read Wisconsin_income.csv into R.  Call the data frame `wi`.
+```{r}
+wi <- read_csv("~//Documents/R/Wisconsin_income.csv")
+head(wi)
+class(wi$AGEP)
+class(wi$COW)
+class(wi$JWMNP)
+class(wi$LANX)
+class(wi$MAR)
+class(wi$SEX)
+class(wi$WKHP)
+class(wi$DIS)
+class(wi$PERNP)
+class(wi$Hispanic)
+class(wi$Stem)
+class(wi$Education)
+class(wi$Region)
+class(wi$CIT2)
+class(wi$RAC)
+```
+Which variables have been read in as categorical?
+Region and Stem
+
+Use a text editor (such as Notepad++) to open the data dictionary.  Which variables should be categorical, but have been read in as numeric?
+CIT2,DIS,RAC,Hispanic,SEX,COW,LANX,MAR
+
+Tell R to treat those variables as categorical.
+```{r}
+wi$CIT2<-as.factor(wi$CIT2)
+wi$SEX<-as.factor(wi$SEX)
+wi$DIS<-as.factor(wi$DIS)
+wi$RAC<-as.factor(wi$RAC)
+wi$Hispanic<-as.factor(wi$Hispanic)
+wi$COW<-as.factor(wi$COW)
+wi$LANX<-as.factor(wi$LANX)
+wi$MAR<-as.factor(wi$MAR)
+```
+
+### 2c.
+Sometimes you'll need to create your own code cells.  Start a code cell below by typing 3 backticks (on the key to the left of the number 1) and then {r}.  End the cell on a new line by typing 3 backticks again.
+```{r}
+ncol(wi)
+nrow(wi)
+```
+
+
+Inside the cell you created, write a line of code to display the number of rows and columns of the data.
+
+In the code cell below, write code to display the first 6 rows of data.
+```{r}
+head(wi)
+```
+
+Use the first 6 lines of data and the data dictionary to help you answer the question:  In this data set, what does 1 observational unit represent?
+
+### 2d.
+Make a boxplot of earnings, grouped by class of worker.
+```{r}
+boxplot(PERNP ~ COW, data = wi)
+```
+
+When most observations of a variable are clustered around a low value, and most of the outliers are on the high end of the distribution, we say the variable is "right-skewed".  When a variable is right-skewed, it can sometimes be helpful to reduce the skew by taking the log.  
+
+Run the following code cell to make a boxplot of log(earnings), grouped by class of worker.
+
+```{r}
+gf_boxplot(log(PERNP) ~ COW, data = wi)
+```
+
+Which class of worker has the lowest-paid person in the data set?  
+
+Which class of worker has the lowest median income?  (Note that in a boxplot, the median is denoted by the thick line in the middle of the box.)
+
+## 2e.
+Make a scatterplot of earnings as a function of hours worked per week.  
+```{r}
+attach(wi)
+plot(WKHP, PERNP, main="Relationship Between Earnings and Work",
+   xlab="Hours Worked Per Week", ylab="Total Person's Earnings", pch=19)
+
+abline(lm(PERNP~WKHP), col="blue") # regression line (y~x)
+lines(lowess(WKHP,PERNP), col="green") # lowess line (x,y)
+```
+
+Comment on the relationship between the variables.
+<!-- It appears that the fit line is positive but curved at a certain point that hours don't matter as much to total earnings. -->
+
+Let's see if we can get a more informative graph by reducing the skew in earnings.  Make a scatterplot of the relationship between log(earnings) and hours worked per week.
+```{r}
+attach(wi)
+plot(WKHP, log(PERNP), main="Relationship Between Earnings and Work",
+   xlab="Hours Worked Per Week", ylab="Total Person's Earnings", pch=19)
+
+abline(lm(log(PERNP)~WKHP), col="blue") # regression line (y~x)
+lines(lowess(WKHP,log(PERNP)), col="green") # lowess line (x,y)
+```
+
+Describe the relationship between the variables.
+<!-- It is a positive relations -->
+Add a line of best fit to the graph.  Is its slope positive or negative?  What does this tell you, in the context of this data set?
+```{r}
+
+```
+

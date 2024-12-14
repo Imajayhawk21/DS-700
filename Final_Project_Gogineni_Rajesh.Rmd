@@ -1,0 +1,301 @@
+---
+title: "Gogineni_Rajesh"
+author: "Rajesh Gogineni"
+date: "8/9/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load packages 
+library(ggformula)
+library(dplyr)
+library(readr)
+library(na.tools)
+library(tidyverse)
+library(readr)
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+
+# Read data into R and convert 3 variables into factors (categorical) variables.
+
+library(readr)
+setwd("~//Documents/R")
+Kaggle_data <- read_csv("~//Documents/R/Gogineni_Rajesh.csv")
+
+head(Kaggle_data)
+dim(Kaggle_data)
+
+```
+
+
+```{R}
+# Convert variables into necessary form for analysis and verify form of relevant variables
+
+Kaggle_data$admission_type_id<-as.factor(Kaggle_data$admission_type_id)
+Kaggle_data$discharge_disposition_id<-as.factor(Kaggle_data$discharge_disposition_id)
+Kaggle_data$admission_source_id <-as.factor(Kaggle_data$admission_source_id)
+
+class(Kaggle_data$admission_type_id)
+class(Kaggle_data$discharge_disposition_id)
+class(Kaggle_data$admission_source_id)
+class(Kaggle_data$diag_1)
+class(Kaggle_data$diag_2)
+class(Kaggle_data$diag_3)
+
+```
+```{r}
+
+# Remove ? mark records and replace with NA
+
+Kaggle_data <- Kaggle_data %>%
+  mutate(diag_1 = ifelse(diag_1 == "?", NA, diag_1),
+         diag_2 = ifelse(diag_2 == "?", NA, diag_2),
+         diag_3 = ifelse(diag_3 == "?", NA, diag_3))
+
+
+```
+
+
+```{r}
+
+# function that splits all the characters in a column and looks for V or E to classify as an injury or not
+
+id_injury_cause <- function(x){
+  # x is a vector of strings.
+  # Returns a vector of the same length of x
+  # that equals TRUE if the entry of x begins with a V or E, and that equals FALSE otherwise.
+  
+  codesplit = strsplit(x, split = "")
+  injury_cause = vector(length = length(codesplit))
+  for(ii in 1:length(codesplit)){
+    code = codesplit[[ii]]
+    if(code[1] %in% c("V", "E")){
+      injury_cause[ii] = TRUE
+    }  else{injury_cause[ii] = FALSE}
+  } # end iteration over codesplit
+  
+  return(injury_cause)
+} #end function id_injury_cause
+
+
+```
+
+
+```{r}
+
+# create new columns where function can land interpretation of the diag variables
+
+Kaggle_data <- Kaggle_data %>%
+  mutate(injury_cause1 = id_injury_cause(diag_1),
+         injury_cause2 = id_injury_cause(diag_2),
+         injury_cause3 = id_injury_cause(diag_3))
+
+```
+```{r}
+# Convert diag variables into numbers, so that we can interpret easier in subsequent code that will classify infectious diseases
+
+Kaggle_data <- Kaggle_data %>%
+  mutate(diag_1 = parse_number(diag_1),
+         diag_2 = parse_number(diag_2),
+         diag_3 = parse_number(diag_3))
+
+```
+
+
+```{r}
+
+# function that defines the interpretation of the billing code into the reason for the service
+
+ICD9 <- function(n, has_VE){
+  # Returns a string summarizing a single ICD-9 billing code.
+  # n is the numeric portion of the billing code.
+  # has_VE is TRUE if the billing code begins with V or E.
+  
+  if(has_VE){ return("external_cause") }
+  if(is.na(n)){ return(NA) }
+  if(n < 1){ stop("Billing code less than 001.")  }
+  
+  if(n < 140){ return("infection") }
+  if(n < 240){ return("neoplasm") }
+  if(n < 280){ return("EMI") }
+  if(n < 290){ return("blood") }
+  if(n < 320){ return("mental") }
+  
+  if(n < 390){ return("nervous") }
+  if(n < 460){ return("circulatory") }
+  if(n < 520){ return("respiratory") }
+  if(n < 580){ return("digestive") }
+  if(n < 630){ return("genitourinary") }
+  
+  if(n < 680){ return("pregnancy_childbirth") }
+  if(n < 710){ return("skin") }
+  if(n < 740){ return("musculoskeletal") }
+  if(n < 760){ return("congenital") }
+  if(n < 780){ return("perinatal") }
+  
+  if(n < 800){ return("poorly_defined") }
+  if(n < 1000){ return("injury") }
+  
+  stop("Billing code greater than or equal to 1000.") 
+} # end of function ICD9
+
+
+```
+
+
+```{r}
+
+# This function will help us process the two columns together three different times and create three diagnosis columns that are understandable by anyone  
+
+ICD9_vector <- function(n_vect, VE_vect){
+  # Calls ICD9 for each entry in n_vect.
+  # n_vect is a vector of the numeric portions of the billing codes.
+  # VE_vect is a logical vector which equals TRUE if the billing code begins with V or E.
+  # Assumes that n_vect and VE_vect have the same length.
+  
+  n_iter = length(n_vect)
+  to_return = vector(length = n_iter)
+  
+  for(ii in 1:n_iter){
+    to_return[ii] = ICD9(n_vect[ii], VE_vect[ii])
+  } # end of iteration over elements of n_vect
+  
+  return(to_return)
+  
+} # end of function ICD9_vector
+
+
+```
+
+
+```{r}
+
+# execute function to create new columns
+
+Kaggle_data <- Kaggle_data %>%
+  mutate(diagnosis1 = ICD9_vector(diag_1, injury_cause1),
+         diagnosis2 = ICD9_vector(diag_2, injury_cause2),
+         diagnosis3 = ICD9_vector(diag_3, injury_cause3))
+
+```
+
+
+```{r}
+
+# remove extraneous variables from dataframe that were for interpretation only
+
+Kaggle_data = subset(Kaggle_data, select = -c(diag_1,diag_2,diag_3, injury_cause1,injury_cause2,injury_cause3))
+
+```
+
+
+```{r}
+# Use function to look for variance in columns and remove those columns that have no variance. 
+
+
+removeZeroVar <- function(df){
+  df[, sapply(df, function(x) length(unique(x)) > 1)]
+  
+}
+
+removeZeroVar2 <- data.frame()
+removeZeroVar2 <- removeZeroVar(Kaggle_data)
+
+# Create a dataframe and load tibble into that dataframe. 
+Kaggle_columns <- colnames(Kaggle_data)
+removeZeroVar_columns <- colnames(removeZeroVar2)
+
+
+# Compare columns of both dataframes to find out what was removed. Examide and citoglipton are the columns that were removed due to having no variability
+Column_Diff <- setdiff(Kaggle_columns, removeZeroVar_columns)
+print(Column_Diff)
+
+```
+```{r}
+# Gives us the aggregated NA values in each column
+colSums(is.na(removeZeroVar2))
+sum(is.na(removeZeroVar2))
+
+# Build empty output vector 
+cnt_of_question <- vector( "numeric")
+
+# Insert counts into empty output vector
+for (i in removeZeroVar_columns) {
+  cnt_of_question <- c(cnt_of_question, sum(removeZeroVar2[[i]] == '?'))
+}
+
+```
+
+
+```{r}
+
+#combine two vectors to have an easy way to see which column has the most ? marks
+cnt_by_col_question <- rbind(removeZeroVar_columns, cnt_of_question)
+
+#Weight has the most missing values of any column with 98569 observations of ?.
+view(cnt_by_col_question)
+
+# replace ? in race with NA
+removeZeroVar2[, 5][removeZeroVar2[, 5] == '?'] <- NA
+
+# confirm if replace_with_na worked or not
+sum(removeZeroVar2$race == '?')  
+
+```
+
+
+```{r}
+# impute missing values in the race column
+
+table(removeZeroVar2$race)
+sum(is.na(removeZeroVar2$race))
+
+val <- unique(removeZeroVar2$race[!is.na(removeZeroVar2$race)])  
+my_mode <- val[which.max(tabulate(match(removeZeroVar2$race, val)))] 
+
+removeZeroVar2$race[is.na(removeZeroVar2$race)] <- my_mode 
+
+# Run this again to see if our code worked
+sum(is.na(removeZeroVar2$race))
+
+```
+
+
+```{r}
+
+# select the columns we want to take a look at and count how many diagnosises by age group are occurring so we can run a linear regression on these two variables.
+
+#3a
+LR_on_AgeDiagnosis <- removeZeroVar2 %>% 
+  group_by(patient_nbr,age, diagnosis1) %>% 
+  tally()
+
+LR_on_AgeDiagnosis2 <- LR_on_AgeDiagnosis %>%
+  group_by(patient_nbr,age) %>%
+  summarise(Freq = sum(n))
+
+Age_Impact_Diagnosis <- lm(Freq ~ age, data = LR_on_AgeDiagnosis2)
+
+Age_Impact_Diagnosis
+
+```
+
+```{r}
+#3b
+gf_bar(~ age, fill =~ diagnosis1, position = position_dodge(), data = removeZeroVar2) %>%
+  gf_labs(title = "As age increases the diagnoses increase",
+          x = "Age",
+          y = "Count of Diagnoses")
+
+
+```

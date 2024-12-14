@@ -1,0 +1,305 @@
+---
+title: "Homework 9--DS 700"
+author: "Abra Brisbin"
+date: "12/15/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load necessary packages here.
+```{r}
+
+library(ggformula)
+library(dplyr)
+library(readr)
+library(na.tools)
+library(tidyverse)
+library(mosaicData)
+
+```
+
+## Problem 1:  Measuring skew
+A variable is called skewed if it has a long tail or outliers on one side. (For some visual examples, see http://www.statisticshowto.com/probability-and-statistics/skewed-distribution/.) One numerical measure of skewness is Pearson’s median skewness coefficient:
+$\frac{3*(mean(x) - median(x))}{sd(x)}$
+(Recall that sd stands for standard deviation. Notice that a coefficient > 0 indicates right skewness, and a coefficient < 0 indicates left skewness.)
+
+### 1a.
+Create a function, `pearson_skew`, which computes Pearson’s median skewness coefficient for a vector x. (For now, you may assume that x contains only numeric values and no NAs.)
+```{r}
+pearson_skew <- function(x){
+  # setting up a pearson_skew function to be able to calculate this for future arguments
+  
+  pearson_skew_median = {3*(mean(x) - median(x))}/sd(x)
+  return(pearson_skew_median)
+}
+
+```
+
+Use your function to compute Pearson’s median skewness coefficient for the vector `example_1a`:
+
+```{r}
+example_1a = c( 1, 1, 2, 10 )
+
+pearson_skew(example_1a)
+```
+### 1b.
+Modify your function so it accepts additional arguments (such as na.rm = TRUE) and passes them to the functions it calls.
+```{r}
+
+pearson_skew <- function(x, ...){
+  # adding ellipsis to add in additional arguments into the function
+  
+  pearson_skew_median = {3*(mean(x, na.rm = TRUE) - median(x, na.rm = TRUE))}/sd(x, na.rm = TRUE)
+  return(pearson_skew_median)
+}
+
+
+```
+
+Use your function to compute Pearson’s median skewness coefficient for the vector `example_1b`:
+```{r}
+example_1b = c( 1, 2, 5, NA, 9 )
+
+pearson_skew(example_1b)
+
+```
+
+## 1c.
+Modify your function so it returns two pieces of output: The skewness coefficient, and the length of the vector.
+```{r}
+
+pearson_skew_length <- function(x, ...){
+  # added in length(x), but sorting out returning both pearson coefficient and length out of the function
+  
+  pearson_skew_median = {3*(mean(x, na.rm = TRUE) - median(x, na.rm = TRUE))}/sd(x, na.rm = TRUE)
+  vector_length <- length(x)
+  # return(pearson_skew_median)
+  return(vector_length)
+}
+```
+
+Run the following code (without changes) to create the vector `example_1c`.  Then find what `pearson_skew` returns when applied to this vector.
+```{r}
+set.seed(999)
+example_1c = rexp(floor(runif(1, 101, 199)), 2)
+```
+
+```{r}
+pearson_skew_length(example_1c)
+```
+
+
+## Problem 2:  Using functions for graphing
+### 2a.
+Load the *mosaicData* package.  We will analyze the `SaratogaHouses` data set from this package.  This data set contains information about the prices of houses in Saratoga County, New York.
+
+Start by using `dplyr` functions to create a new data frame, SaratogaHouses2, containing the variables from SaratogaHouses, plus the log of price, livingArea, and lotSize.
+
+- lotSize has two values equal to 0, which will produce $-\infty$ when you take the log.  Remove these rows from the data.
+
+```{r}
+dim(SaratogaHouses)
+head(SaratogaHouses)
+tail(SaratogaHouses)
+
+SaratogaHouses2 <- SaratogaHouses %>%
+    mutate(logprice = log(price),
+           loglotSize = log(lotSize),
+           loglivingArea = log(livingArea)) 
+
+SaratogaHouses2 <- SaratogaHouses2 %>%
+  filter(lotSize != 0)
+
+head(SaratogaHouses2)
+
+```
+
+### 2b.
+Write a function, `plot_scatter_fit`, that takes a formula and a data set, and uses ggformula functions to 
+
+- make a scatterplot 
+- with a line of best fit
+- that has your name as a caption.
+
+(Hint:  Check out the documentation for the functions `gf_smooth` and `gf_labs`.)
+
+Your function should accept additional arguments to pass to other functions.
+
+```{r}
+plot_scatter_fit <- function(formula, data, ...){
+# Creates a scatterplot that allows us to change the x and y variables easily and examine the relationship between any two variables
+  
+  # library(ggformula)
+  # library(dplyr)
+  
+  myplot = gf_point(formula, data = data, ...) %>%
+      gf_smooth(formula, method = "lm", col = "blue", data = data, ...) %>%
+    gf_labs(title = "What we learn from this graph",
+          subtitle = "test",
+          caption = "Rajesh_Gogineni",
+          x = "LotSize",
+          y = "Price")
+  
+  return(myplot)
+}
+
+plot_scatter_fit(logprice ~ loglivingArea, data = SaratogaHouses2)
+
+plot_scatter_fit(logprice ~ loglotSize, data = SaratogaHouses2)
+
+
+```
+
+### 2c.
+Use the function you created to make a graph of the relationship between log(price) and log(lotSize).  (Which of these variables should be on the vertical axis?)  Use an additional argument to specify that the points plotted should be squares.  (It may help to view the R documentation for `points`.)
+
+
+Add a title to your graph that names the variables and describes the direction of the association.
+
+```{r}
+
+```
+
+### 2d.
+Use the function you created to make a graph of the relationship between log(price) and log(livingArea).  (Which of these variables should be on the vertical axis?)  Use an additional argument to color the points according to the value of `fuel`.  
+
+Add a title to your graph that names the variables and describes the direction of the association.
+
+```{r}
+
+```
+
+### 2e.
+If your goal was to predict *log(price)* using only a single predictor variable, which predictor would you rather use:  *log(lotSize)* or *log(livingArea)*?  Explain your answer based on what you see in the graphs.
+
+
+## Problem 3:  Making predictions
+In this problem, we'll use functions to build and compare models for log(price).
+
+### 3a.
+Write a function, `linear_predict` that takes a formula and data set, fits a linear model, and returns a vector of predicted y-values.  You are allowed to use `lm` and `predict`.
+```{r}
+#living Area as an independent variable against price of a home
+linear_predict_livingArea = lm(logprice ~ loglivingArea, data = SaratogaHouses2)
+
+predicted_values_model_livingArea = predict(linear_predict_livingArea)
+
+
+#lot Size as an independent variable against price of a home
+linear_predict_lotSize = lm(logprice ~ loglotSize, data = SaratogaHouses2)
+
+predicted_values_model_lotSize = predict(linear_predict_lotSize)
+
+#age as an independent variable against price of a home
+linear_predict_age = lm(logprice ~ age, data = SaratogaHouses2)
+
+predicted_values_model_age = predict(linear_predict_age)
+
+
+
+```
+
+### 3b.
+Modify your function so that it also returns the coefficients (y-intercept and slope) of the line of best fit.
+
+```{r}
+
+```
+
+### 3c.
+When you use a model to predict a quantitative variable, one way to assess the model's accuracy is the Root Mean Squared Error, or RMSE.  (You'll learn more about this in DS 740.)  Here's how it's computed:
+
+- The "error" of a prediction is the observed data value minus the predicted data value.  Compute this for all the data values.
+- Square the errors.
+- Take the mean.
+- Take the square root.
+
+For example, consider the following data:
+```{r}
+observed_example = c(0, 1, 2)
+predicted_example = c(-1, 1, 4)
+```
+
+The errors would be (1, 0, -2).  Squaring them gives (1, 0, 4).  The mean of these is 5/3.  So the RMSE is $\sqrt{5/3} = 1.290994$.
+
+If you want accurate predictions, is it better to have a small RMSE or a large RMSE?  (Hint:  Consider what the RMSE would be for `observed_example` if the predictions were `c(0, 1, 2)`, or if the predictions were `c(100, 100, 100)`.)
+
+### 3d.
+Write a function, `compute_RMSE`, that takes two vectors (observed and predicted) and computes the RMSE.  (You are allowed to use the built-in `mean` function.)
+
+```{r}
+
+compute_RMSE = sqrt((mean(((observed_example - predicted_example)^2))))
+
+```
+
+Check your function using the `observed_example` and `predicted_example` vectors.
+```{r}
+
+compute_RMSE
+
+
+```
+
+### 3e.
+Use your `linear_predict` and `compute_RMSE` functions to predict log(price) using log(lotSize), and find the RMSE of the model.
+```{r}
+
+
+logpricevector = SaratogaHouses2[['logprice']]
+
+compute_RMSE_logprice_loglotSize = sqrt((mean(((logpricevector - predicted_values_model_lotSize)^2))))
+
+compute_RMSE_logprice_loglotSize
+
+```
+
+### 3f.
+Use your `linear_predict` and `compute_RMSE` functions to predict log(price) using log(livingArea), and find the RMSE of the model.
+```{r}
+
+logpricevectorlivingArea = SaratogaHouses2[['logprice']]
+
+compute_RMSE_logprice_loglivingArea = sqrt((mean(((logpricevectorlivingArea - predicted_values_model_livingArea)^2))))
+
+compute_RMSE_logprice_loglivingArea
+
+```
+
+Based on the RMSE, which model did a better job of predicting log(price)?  Does this agree with your expectation in problem 2e?
+
+### 3g.  Putting it all together.
+Write a "wrapper" function, `fit_line_plot`, that calls plot_scatter_fit, linear_predict, and compute_RMSE.  Your function should take the following input:
+
+- a formula
+- a data set
+- a vector `y` containing the data from the response variable (It would be possible to read this from the formula and the data set, but this is more challenging than what we expect you to do for this assignment.) 
+- any other arguments to be passed to linear_predict or plot_scatter_fit
+
+Your function should return 2 things:
+
+- the RMSE
+- a scatterplot of the data with the line of best fit, *stating the equation of the line of best fit* in the title, and the *RMSE* in the subtitle.  
+
+When printing the line of best fit, you may assume that the formula has just 1 predictor variable.  The function `paste` may be helpful.
+
+```{r}
+
+```
+
+### 3h.
+Use your `fit_line_plot` function to analyze a linear model that predicts log(price) based on age.
+```{r}
+
+logpricevector = SaratogaHouses2[['logprice']]
+
+compute_RMSE_logprice_age = sqrt((mean(((logpricevector - predicted_values_model_age)^2))))
+
+compute_RMSE_logprice_age
+
+```
+
+

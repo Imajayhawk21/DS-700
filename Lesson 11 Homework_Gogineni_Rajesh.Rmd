@@ -1,0 +1,502 @@
+insta---
+title: "Homework 11--DS 700"
+author: "Abra Brisbin"
+date: "12/16/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load necessary packages here.
+```{r}
+
+library(ISLR)
+library(ggformula)
+library(dplyr)
+library(readr)
+library(na.tools)
+library(tidyverse)
+library(mosaicData)
+library(readr)
+library(psych)
+library(pwr)
+library(broom)
+
+```
+
+## Problem 1:  Interpreting p-values
+This problem will guide you through interpreting p-values from multiple linear regression.
+
+### 1a.
+Load the ISLR package.  View the documentation for the Carseats data set.  What do the following variables represent?  For each variable, state whether it is categorical or quantitative.
+
+- Sales: quantitative
+- Price: quantitative
+- ShelveLoc: categorical
+
+### 1b.
+Using the Carseats data set, perform linear regression to predict Sales based on Price and ShelveLoc.  Use `*` (without the backticks) to separate the predictor variables in the formula.  This will allow us to analyze the "interaction" between these variables.
+```{r}
+
+head(Carseats)
+dim(Carseats)
+
+LR_Sales_Price_Shelf <- lm(Sales ~ Price * ShelveLoc, data = Carseats)
+
+```
+
+### 1c.
+Display the summary of the linear model.
+```{r}
+
+LR_Sales_Price_Shelf
+
+```
+
+Notice that ShelveLocGood represents the dummy variable that equals 1 if the original ShelveLoc variable equalled "Good", and that equals 0 otherwise; similarly for ShelveLocMedium.  (For more about this, review the video on logistic regression.) 
+
+```{r}
+
+ShelfLocCharacters = levels(Carseats$ShelveLoc)
+
+```
+
+Why isn't there a line for ShelveLocBad?
+
+The summary row for `Price:ShelveLocGood` represents the term $Price \cdot I_{Good}$, where $I_{Good}$ is the dummy variable; similarly for `Price:ShelveLocMedium`.  Write the full regression equation to predict Sales based on Price, $I_{Good}$, and $I_{Medium}$.  (Including the y-intercept, it should have 6 terms.)
+
+### 1d.
+When ShelveLoc = Bad, the dummy variables $I_{Good}$ and $I_{Medium}$ are both 0.  Write the regression equation to predict Sales for stores where ShelveLoc = Bad.  (Including the y-intercept, it should have 2 terms.)
+
+```{r}
+
+CarseatsBadOnly <- Carseats %>%
+  filter(ShelveLoc == "Bad")
+
+CarseatsBadOnly
+
+CarseatsBadOnly$CatSales = cut(CarseatsBadOnly$Sales, breaks =c(1,2,3,4,5,6,7,8,9,10,11,12))
+
+LR_Sales_Price_Shelf_Bad <- glm(Sales ~ Price, data = CarseatsBadOnly)
+
+summary(LR_Sales_Price_Shelf_Bad)
+```
+
+What is the p-value of the slope of price, when ShelveLoc = Bad?  Write the null and alternative hypotheses associated with this p-value.
+
+Write your conclusion based on this p-value in the context of the data.
+
+
+### 1e.  
+When ShelveLoc = Good, the dummy variable $I_{Medium} = 0$.  Write *and simplify* the regression equation to predict Sales for stores where ShelveLoc = Good.  (Including the y-intercept, it will start with 4 terms.  When simplified, it should have 2 terms.)
+
+```{r}
+CarseatsGoodOnly <- Carseats %>%
+  filter(ShelveLoc == "Good")
+
+CarseatsGoodOnly
+
+CarseatsGoodOnly$CatGoodSales = cut(CarseatsGoodOnly$Sales, breaks =c(1,2,3,4,5,6,7,8,9,10,11,12))
+
+LR_Sales_Price_Shelf_Good <- glm(Sales ~ Price, data = CarseatsGoodOnly)
+
+summary(LR_Sales_Price_Shelf_Good)
+```
+Which row of the regression summary controls the difference in slope between this regression equation, and the equation in part 1d?  What is the p-value in this row?  Write the null and alternative hypotheses associated with this p-value.
+
+Write your conclusion based on this p-value in the context of the data.
+
+### 1f.
+Which row of the regression summary controls the difference in y-intercepts between the regression equations in parts 1d and 1e?  What is the p-value in this row?  
+
+This p-value is associated with the hypotheses
+
+$H_0:$ The y-intercept is the same when ShelveLoc = Good and when ShelveLoc = Bad.
+
+$H_a:$ The y-intercept is different when ShelveLoc = Good than when ShelveLoc = Bad.
+
+- Remember that the y-intercept represents the predicted sales when the price equals 0.
+
+Write your conclusion based on this p-value in the context of the data.
+
+## Problem 2:  Power of a hypothesis test
+In this problem, you will use control flow to investigate the *power* of a hypothesis test.  Power is the probability of correctly rejecting the null hypothesis when the null hypothesis is false.
+
+### 2a.
+Suppose we are testing
+
+$H_0:  \beta_1 = 0$ 
+
+$H_a:  \beta_1 \ne 0$
+
+Suppose that (unbeknownst to us) the truth is that $\beta_1 = 2$.  Make a prediction:  Will it be easier to tell that $\beta_1 \ne 0$ with a sample size of 20 or 200?  (In other words, what effect does sample size have on power?)
+
+Now suppose that we have a sample size of 100.  Make a prediction:  Will it be easier to tell that $\beta_1 \ne 0$ if the truth is that $\beta_1 = 2$, or that $\beta_1 = 0.2$?  (In other words, what effect does the difference between $H_0$ and the truth have on power?)
+
+
+### 2b.
+Write a function, `power_lin_reg`, which takes the sample size $n$ as input.  Your function should include a *for* loop that does the following 1000 times:
+
+- Generates a vector x, of $n$ random numbers between 0 and 1.  You can do this using `runif( )`.
+- Generates a vector `noise` of $n$ random numbers from a normal distribution (with mean 0 and standard deviation 1).  You can do this using `rnorm( )`.
+- Generates a vector y equal to 2*x + `noise`.
+- Performs linear regression to predict y based on x.
+- Checks the p-value of the slope.  (It may help to review the video on linear regression.)
+
+Your function should return the proportion of the 1000 p-values that are less than .05.
+
+
+
+x = runif(20, min = 0, max = 1)
+
+noise = rnorm(20, mean = 0, sd = 1)
+
+y = (2*x)+noise
+
+lmmodel <- lm(y ~ x)
+
+summary(lmmodel)
+
+
+
+
+run code 1000 times
+create random vector of %n% numbers and keep combining these vectors through the loop
+create a noise vector that creates a random distribution of %n% numbers and combines them in a vector through the loop
+
+outside of loop perform 2*x+noise
+and then run a linear regression of x to y
+
+
+Run the following code cell to estimate the power at a sample size of 20:
+```{r}
+set.seed(11)
+# power_lin_reg(20)
+
+
+x <- vector( "numeric")            # Create empty vector
+noise <- vector( "numeric" )
+y <- vector( "numeric")
+pvalvec <- vector( "numeric" )
+
+power_lin_reg <- function(samsize,...){
+  for (i in 1:1000) {
+    # Head of for loop
+    x <- runif(samsize, min = 0, max = 1)
+    noise <- rnorm(samsize, mean = 0, sd = 1)
+    y = (2 * x) + noise
+    lmmodel <- lm(y ~ x)
+    pvalpull <- glance(lmmodel)$p.value # get p value
+    pvalvec <- c(pvalvec, pvalpull)
+  }
+  {
+  return(length(pvalvec[pvalvec<.05])/1000)
+  }
+}
+
+power_lin_reg <- power_lin_reg(20)
+
+
+# this below should be outputted by the return statement
+# size <- length(pvalvec[pvalvec<.05])/1000
+
+
+```
+
+
+and at a sample size of 200:
+```{r}
+
+set.seed(11)
+
+x <- vector( "numeric")            # Create empty vector
+noise <- vector( "numeric" )
+y <- vector( "numeric")
+pvalvec <- vector( "numeric" )
+
+power_lin_reg <- function(samsize,...){
+  for (i in 1:1000) {
+    # Head of for loop
+    x <- runif(samsize, min = 0, max = 1)
+    noise <- rnorm(samsize, mean = 0, sd = 1)
+    y = (2 * x) + noise
+    lmmodel <- lm(y ~ x)
+    pvalpull <- glance(lmmodel)$p.value # get p value
+    pvalvec <- c(pvalvec, pvalpull)
+  }
+  {
+  return(length(pvalvec[pvalvec<.05])/1000)
+  }
+}
+
+power_lin_reg <- power_lin_reg(200)
+
+
+
+```
+
+How does the sample size in the linear regression affect the power?
+
+### 2c.
+Modify your function to accept the slope as an additional input.
+
+```{r}
+
+set.seed(11)
+
+# Possibly need to figure out how to edit the slope before the linear regression runs
+
+x <- vector( "numeric")            # Create empty vector
+noise <- vector( "numeric" )
+y <- vector( "numeric")
+pvalvec <- vector( "numeric" )
+
+power_lin_reg <- function(samsize,slopeadj){
+  for (i in 1:1000) {
+    # Head of for loop
+    x <- runif(samsize, min = 0, max = 1)
+    noise <- rnorm(samsize, mean = 0, sd = 1)
+    y = (2 * x) + noise
+    lmmodel <- lm(y ~ 1, offset = (x*slopeadj))
+    pvalpull <- glance(lmmodel)$p.value  # get p value
+    pvalvec <- c(pvalvec, pvalpull)
+  }
+  {
+  return(length(pvalvec[pvalvec<.05])/1000)
+  }
+}
+
+power_lin_reg <- power_lin_reg(100,2)
+
+```
+
+Run the following code cell to estimate the power when the sample size is 100 and the true slope is 2:
+```{r}
+set.seed(11)
+
+x <- vector( "numeric")            # Create empty vector
+noise <- vector( "numeric" )
+y <- vector( "numeric")
+pvalvec <- vector( "numeric" )
+
+
+power_lin_reg <- function(samsize,slopeadj){
+  for (i in 1:1000) {
+    # Head of for loop
+    x <- runif(samsize, min = 0, max = 1)
+    noise <- rnorm(samsize, mean = 0, sd = 1)
+    y = (2 * x) + noise
+    lmmodel <- lm(y ~ 1, offset = x*slopeadj)
+    pvalpull <- glance(lmmodel)$p.value # get p value
+    pvalvec <- c(pvalvec, pvalpull)
+  }
+  {
+  return(length(pvalvec[pvalvec<.05])/1000)
+  }
+}
+
+power_lin_reg <- power_lin_reg(100,2)
+
+```
+
+and when the sample size is 100 and the true slope is 0.2:
+```{r}
+set.seed(11)
+
+x <- vector( "numeric")            # Create empty vector
+noise <- vector( "numeric" )
+y <- vector( "numeric")
+pvalvec <- vector( "numeric" )
+
+power_lin_reg <- function(samsize){
+  for (i in 1:1000) {
+    # Head of for loop
+    x <- runif(samsize, min = 0, max = 1)
+    noise <- rnorm(samsize, mean = 0, sd = 1)
+    y = (2 * x) + noise
+    lmmodel <- lm(y ~ x)
+    fit <- coefficients(lmmodel)
+    pvalpull <- glance(lmmodel)$p.value # get p value
+    pvalvec <- c(pvalvec, pvalpull)
+  }
+  {
+  return(length(pvalvec[pvalvec<.05])/1000)
+  }
+}
+
+power_lin_reg <- power_lin_reg(100)
+
+```
+
+How is the power affected by changing the size of the difference between the null hypothesis ($\beta_1 = 0$) and the truth?
+
+
+
+## Problem 3:  Control Flow for Data Cleaning
+This problem will help you practice using control flow to clean a messy, challenging data set.  
+
+### 3a.
+Read diabetes_example.csv into R.
+```{r}
+library(readr)
+setwd("~//Documents/R")
+diabetes_example <- read_csv("~//Documents/R/diabetes_example.csv")
+View(diabetes_example)
+```
+
+The variables `diag_1`, `diag_2`, and `diag_3` contain ICD-9 billing codes for each patient.  Start by replacing "?" by NA in each of these columns.  (You can do this using control flow or `dplyr`.)
+
+```{r}
+
+diabetes_example[diabetes_example == "?"] <- NA   
+print(diabetes_example)
+
+```
+
+
+### 3b.
+Codes that begin with V or E indicate the cause of an injury or other supplemental information.  We would like to create a vector, `injury_cause`, that equals TRUE if `diag_1` begins with a V or E, and that equals FALSE otherwise.  Start by running the following code to split each element of `diag_1` into individual letters:
+```{r}
+codesplit = strsplit(diabetes_example$diag_1, split = "")
+```
+
+Now, for example, `codesplit[[5]]` (note the double brackets) is a vector of characters that make up the fifth patient's entry in `diag_1`.  We can test whether the first character is a V or an E using
+```{r}
+codesplit[[5]][1] %in% c("V", "E")
+head(diabetes_example)
+tail(diabetes_example)
+dim(diabetes_example)
+length(diabetes_example)
+```
+
+Use control flow to create a vector, `injury_cause`, that equals TRUE if `diag_1` begins with a V or E, and that equals FALSE otherwise.
+```{r}
+
+injury_cause <- vector( "logical" )
+current_rec_injury_cause <- vector( "logical" )
+
+for (i in 1:1000) {
+  if (codesplit[[i]][4] %in% c("V", "E")){
+  current_rec_injury_cause = "TRUE"
+  injury_cause <- c(injury_cause, current_rec_injury_cause)
+  } else {
+      current_rec_injury_cause = "FALSE"
+      injury_cause <- c(injury_cause, current_rec_injury_cause)
+  }
+}
+
+table(injury_cause)  
+```
+
+### 3c.
+Write a function that takes a column of data as input, splits each entry into characters, and returns a vector `injury_cause` that equals TRUE if `diag_1` begins with a V or E, and that equals FALSE otherwise.
+```{r}
+
+ICD9 <- function(bill_codes_col,...) {
+  
+injury_cause <- vector( "logical" )
+current_rec_injury_cause <- vector( "logical" )
+
+  for (i in 1:1000) {
+    if (codesplit[[i]][bill_codes_col] %in% c("V", "E")) {
+      current_rec_injury_cause = "TRUE"
+      injury_cause <- c(injury_cause, current_rec_injury_cause)
+    } else {
+      current_rec_injury_cause = "FALSE"
+      injury_cause <- c(injury_cause, current_rec_injury_cause)
+    }
+    }
+  {
+  return(table(injury_cause))
+  }
+}
+
+ICD9(4)
+```
+
+
+
+### 3d.
+Use your function to create 3 new columns in `diabetes`:  `injury_cause1` should be based on `diag_1`; `injury_cause2` should be based on `diag_2`; and `injury_cause3` should be based on `diag_3`.
+
+```{r}
+
+```
+
+
+How many entries in each of the 3 new columns are TRUE? 13
+```{r}
+
+```
+
+### 3e.
+We want to create 3 new columns, `diagnosis1`, `diagnosis2`, and `diagnosis3`, containing human-readable summaries of the type of diagnosis represented by the billing codes in `diag_1`, `diag_2`, and `diag_3`.  Start by using `parse_number` (in the readr package) to convert `diag_1`, `diag_2`, and `diag_3` to numbers.  (Note that when we do this, we lose the V or E at the start of the number.  That's why it was important to create the `injury_cause` columns first.)
+
+```{r}
+
+```
+
+Write a function that takes a number $n$ (such as a value from diag_1) and a Boolean value (TRUE or FALSE, such as a value from injury_cause1) as input.  Your function should use `if` statements (possibly with `else if` and/or `else`) to return the appropriate human-readable summary from this list of rules:
+
+- If the Boolean is TRUE, returns "external_cause".
+- If $n$ is NA, returns NA.
+- If $1 \leq n < 140$, returns "infection".
+- If $140 \leq n < 240$, returns "neoplasm".
+- If $240 \leq n < 280$, returns "EMI".  (This is short for "endocrine, metabolic, or immune disorder".)
+- If $280 \leq n < 290$, returns "blood".
+- If $290 \leq n < 320$, returns "mental".
+- If $320 \leq n < 390$, returns "nervous".
+- If $390 \leq n < 460$, returns "circulatory".
+- If $460 \leq n < 520$, returns "respiratory".
+- If $520 \leq n < 580$, returns "digestive".
+- If $580 \leq n < 630$, returns "genitourinary".
+- If $630 \leq n < 680$, returns "pregnancy_childbirth".
+- If $680 \leq n < 710$, returns "skin".
+- If $710 \leq n < 740$, returns "musculoskeletal".
+- If $740 \leq n < 760$, returns "congenital".
+- If $760 \leq n < 780$, returns "perinatal".
+- If $780 \leq n < 800$, returns "poorly_defined".
+- If $800 \leq n < 1000$, returns "injury".
+- If none of the above is returned, stops with an appropriate error message.  (The function `stop` might be useful.)
+
+Your function should have a meaningful name.
+
+```{r}
+
+```
+
+
+
+### 3f.
+Write a function that takes one numeric vector (such as diag_1) and one logical vector (such as injury_cause1) as input.  Your function should use **control flow** to apply your function from part 3e to each entry in the vectors.  It should return a vector containing the outputs from your function in part 3e.  Your function should have a meaningful name.
+
+```{r}
+
+
+```
+
+Use your function to create the columns `diagnosis1`, `diagnosis2`, and `diagnosis3`, based on the `diag_` and `injury_cause` columns of the same number.  (You may do this using control flow or `dplyr`.)
+
+```{r}
+
+```
+
+### 3g. Analyzing the cleaned data
+Use ggformula to make a graph of `diagnosis1`.  Which diagnosis is the most common?  (Hint:  To make the x-axis labels more readable, pipe the results of the graph into `gf_theme(axis.text.x=element_text(angle=65, hjust=1))`.)
+```{r}
+
+```
+
+Use dplyr to help you answer the following:  Out of the people whose first billing code is for a respiratory issue, how many have their second billing code for an infection?  How many have their second billing code for a circulatory issue?
+```{r}
+
+```
+
+## Optional Challenge Questions
+These questions are not worth any points; they're just interesting challenges for people who have finished problems 1-3 and have some time left over.
+
+- Try modifying your `power_lin_reg` function from problem 2 to accept a different standard deviation for the `noise` variable.  Investigate how the standard deviation affects power.
+- Try modifying your `power_lin_reg` function to accept a different significance level $\alpha$ for rejecting the null hypothesis.  Let it have the default value of .05.  Investigate how $\alpha$ affects power.
+- Try writing another function that calls `power_lin_reg` multiple times, and makes a graph of power as a function of sample size (or slope).
